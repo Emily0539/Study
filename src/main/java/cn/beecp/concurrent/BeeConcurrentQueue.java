@@ -16,6 +16,7 @@
 package cn.beecp.concurrent;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import static java.util.concurrent.atomic.AtomicReferenceFieldUpdater.newUpdater;
 
@@ -24,14 +25,13 @@ import static java.util.concurrent.atomic.AtomicReferenceFieldUpdater.newUpdater
  *
  * @author Chris.Liao
  */
-public class BeeConcurrentQueue<E> extends AbstractQueue<E> implements Queue<E> {
+public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     private final static AtomicReferenceFieldUpdater<Node, Node> nextUpd =
             newUpdater(Node.class, Node.class, "next");
 
     private static final class Node<E> {
         volatile Node<E> next;
         private E v;
-
         public Node(E v) {
             this.v = v;
         }
@@ -73,8 +73,7 @@ public class BeeConcurrentQueue<E> extends AbstractQueue<E> implements Queue<E> 
     public boolean offer(E v) {
         Node<E> node = new Node<E>(v);
         while (true) {
-            Node<E> t = tail;
-            if (nextUpd.compareAndSet(t, null, node)) {
+            if (tail.next==null && nextUpd.compareAndSet(tail, null, node)) {
                 this.tail = node;
                 return true;
             }
@@ -157,29 +156,4 @@ public class BeeConcurrentQueue<E> extends AbstractQueue<E> implements Queue<E> 
             }
         }
     }//Iterator
-
-
-//    public static void main(String[] args) {
-//        int size = 9000000;
-//        ConcurrentLinkedQueue<Integer> queue1 = new ConcurrentLinkedQueue<Integer>();
-//        testConcurrentQueue("ConcurrentLinkedQueue", queue1, size);
-//        BeeConcurrentQueue<Integer> queue2 = new BeeConcurrentQueue<Integer>();
-//        testConcurrentQueue("ConcurrentLinkedQueue2", queue2, size);
-//    }
-//
-//    private static void testConcurrentQueue(String queueName, Queue queue, int size) {
-//        long time1 = System.currentTimeMillis();
-//        for (int i = 0; i < size; i++) {
-//            queue.offer(i);
-//        }
-//        long time2 = System.currentTimeMillis();
-//        for (int i = 0; i < size; i++) {
-//            queue.remove(i);
-//        }
-//        long time3 = System.currentTimeMillis();
-//
-//        System.out.println("<" + queueName + ">offer time:" + (time2 - time1) + "ms");
-//        System.out.println("<" + queueName + ">remove time:" + (time2 - time1) + "ms");
-//        System.out.println("<" + queueName + ">is empty:" + queue.isEmpty());
-//    }
 }
