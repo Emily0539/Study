@@ -16,6 +16,7 @@
 
 package cn.beecp.test.concurrent;
 
+import cn.beecp.concurrent.BeeConcurrentQueue;
 import cn.beecp.concurrent.BeeTransferQueue;
 
 import java.math.BigDecimal;
@@ -31,12 +32,13 @@ public class WriteReadTest {
     public static void main(String[] args) throws Exception {
         int threadSize = 1000, takeTimes = 10000;
         System.out.println(".................Write/Read Test......................");
-        testWriteAndRead("ArrayBlockingQueue", new ArrayBlockingQueue<Object>(1000), threadSize, takeTimes);
-        testWriteAndRead("LinkedBlockingQueue", new LinkedBlockingQueue<Object>(), threadSize, takeTimes);
-        testWriteAndRead("LinkedTransferQueue", new LinkedTransferQueue<Object>(), threadSize, takeTimes);
-        //testWriteAndRead("SynchronousQueue", new SynchronousQueue<Object>(), threadSize,takeTimes);
-        testWriteAndRead("BeeTransferQueue", new BeeTransferQueue<Object>(), threadSize, takeTimes);
+//        testWriteAndRead("ArrayBlockingQueue", new ArrayBlockingQueue<Object>(1000), threadSize, takeTimes);
+//        testWriteAndRead("LinkedBlockingQueue", new LinkedBlockingQueue<Object>(), threadSize, takeTimes);
+//        testWriteAndRead("LinkedTransferQueue", new LinkedTransferQueue<Object>(), threadSize, takeTimes);
+//        //testWriteAndRead("SynchronousQueue", new SynchronousQueue<Object>(), threadSize,takeTimes);
+//        testWriteAndRead("BeeTransferQueue", new BeeTransferQueue<Object>(), threadSize, takeTimes);
         testWriteAndRead("ConcurrentLinkedQueue", new ConcurrentLinkedQueue<Object>(), threadSize, takeTimes);
+        testWriteAndRead("ConcurrentLinkedQueue2", new BeeConcurrentQueue<Object>(), threadSize, takeTimes);
     }
 
     private static void testWriteAndRead(String queueName, Queue<Object> queue, int testThreadSize, int operateSize) throws Exception {
