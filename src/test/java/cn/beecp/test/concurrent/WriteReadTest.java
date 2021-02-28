@@ -38,7 +38,7 @@ public class WriteReadTest {
 //        //testWriteAndRead("SynchronousQueue", new SynchronousQueue<Object>(), threadSize,takeTimes);
 //        testWriteAndRead("BeeTransferQueue", new BeeTransferQueue<Object>(), threadSize, takeTimes);
         testWriteAndRead("ConcurrentLinkedQueue", new ConcurrentLinkedQueue<Object>(), threadSize, takeTimes);
-        testWriteAndRead("ConcurrentLinkedQueue2", new BeeConcurrentQueue<Object>(), threadSize, takeTimes);
+        testWriteAndRead("BeeConcurrentQueue", new BeeConcurrentQueue<Object>(), threadSize, takeTimes);
     }
 
     private static void testWriteAndRead(String queueName, Queue<Object> queue, int testThreadSize, int operateSize) throws Exception {
