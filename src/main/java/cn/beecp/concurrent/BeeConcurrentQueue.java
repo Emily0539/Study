@@ -35,6 +35,9 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
         public Node(E v) {
             this.v = v;
         }
+        public boolean equals(Object o) {
+           return(v == o)|| v.equals(o);
+        }
     }
 
     private final Node<E> head;
@@ -71,9 +74,11 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     }
 
     public boolean offer(E v) {
+        if (v == null)throw new NullPointerException();
+
         Node<E> node = new Node<E>(v);
         while (true) {
-            if (tail.next==null && nextUpd.compareAndSet(tail, null, node)) {
+            if (nextUpd.compareAndSet(tail, null, node)) {
                 this.tail = node;
                 return true;
             }
@@ -86,12 +91,14 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
         while (curNode != null) {
             if (o.equals(curNode.v)) {
                 if (nextUpd.compareAndSet(preNode, curNode, curNode.next)) {//removed from chain
-                    if (curNode == tail) tail = preNode;
+                    if (curNode == tail)tail = preNode;
+
                     return true;
                 } else {
                     return false;
                 }
             }
+
             preNode = curNode;
             curNode = preNode.next;
         }
@@ -101,7 +108,7 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     public boolean contains(Object o) {
         Node node = head.next;
         while (node != null) {
-            if (o.equals(node.v)) return true;
+            if (node.equals(o)) return true;
             Node next = node.next;
         }
         return false;
@@ -152,7 +159,7 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
             Node nextNode = curNode.next;
             if (preNode.next == curNode && nextUpd.compareAndSet(preNode, curNode, nextNode)) {//removed from chain
                 curNode = nextNode;
-                if (curNode == tail) tail = preNode;
+                if (curNode == tail)tail = preNode;
             }
         }
     }//Iterator
