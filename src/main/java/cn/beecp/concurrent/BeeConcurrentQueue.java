@@ -35,7 +35,7 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
         public Node(E v) {
             this.v = v;
         }
-        public boolean equals(Object o) {
+        public boolean contains(Object o) {
            return(v == o)|| v.equals(o);
         }
     }
@@ -89,7 +89,7 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
         Node preNode = head;
         Node curNode = head.next;
         while (curNode != null) {
-            if (o.equals(curNode.v)) {
+            if (curNode.contains(o)) {
                 if (nextUpd.compareAndSet(preNode, curNode, curNode.next)) {//removed from chain
                     if (curNode == tail)tail = preNode;
 
@@ -108,7 +108,7 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     public boolean contains(Object o) {
         Node node = head.next;
         while (node != null) {
-            if (node.equals(o)) return true;
+            if (node.contains(o)) return true;
             Node next = node.next;
         }
         return false;
