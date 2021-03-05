@@ -77,12 +77,9 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
         if (v == null)throw new NullPointerException();
 
         Node<E> node = new Node<E>(v);
-        while (true) {
-            if (nextUpd.compareAndSet(tail, null, node)) {
-                this.tail = node;
-                return true;
-            }
-        }
+        while (!nextUpd.compareAndSet(tail, null, node));
+        this.tail = node;
+        return true;
     }
 
     public boolean remove(Object o) {
