@@ -15,9 +15,11 @@
  */
 package cn.beecp.concurrent;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import static java.util.concurrent.atomic.AtomicReferenceFieldUpdater.newUpdater;
 
 /**
@@ -26,24 +28,23 @@ import static java.util.concurrent.atomic.AtomicReferenceFieldUpdater.newUpdater
  * @author Chris.Liao
  */
 public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
-    private final static AtomicReferenceFieldUpdater<Node, Node> nextUpd =
-            newUpdater(Node.class, Node.class, "next");
-
-    private static final class Node<E> {
-        volatile Node<E> next;
+    private static final class ChainNode<E> {
+        volatile ChainNode<E> next;//update by nextUpd
         private E v;
-        public Node(E v) {
+        public ChainNode(E v) {
             this.v = v;
         }
         public boolean contains(Object o) {
-           return(v == o)|| v.equals(o);
+            return (v == o) || v.equals(o);
         }
     }
+    private final static AtomicReferenceFieldUpdater<ChainNode, ChainNode> nextUpd =
+            newUpdater(ChainNode.class, ChainNode.class, "next");
 
-    private final Node<E> head;
-    private volatile Node<E> tail;
+    private final ChainNode<E> head;
+    private volatile ChainNode<E> tail;
     public BeeConcurrentQueue() {
-        this.head = new Node<E>(null);
+        this.head = new ChainNode<E>(null);
         this.tail = head;
     }
 
@@ -52,20 +53,13 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     }
 
     public E peek() {
-        Node node = head.next;
+        ChainNode node = head.next;
         return (node != null) ? (E) node.v : null;
-    }
-
-    public E poll() {
-        Node node = head.next;
-        if (node != null && nextUpd.compareAndSet(head, node, node.next))
-            return (E) node.v;
-        return null;
     }
 
     public int size() {
         int size = 0;
-        Node<E> curNode = head.next;
+        ChainNode<E> curNode = head.next;
         while (curNode != null) {
             size++;
             curNode = curNode.next;
@@ -74,59 +68,68 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     }
 
     public boolean offer(E v) {
-        if (v == null)throw new NullPointerException();
-
-        Node<E> node = new Node<E>(v);
-        while (!nextUpd.compareAndSet(tail, null, node));
-        this.tail = node;
+        if (v == null) throw new NullPointerException();
+        ChainNode<E> newNode = new ChainNode<E>(v);
+        while (!nextUpd.compareAndSet(tail, null, newNode)) ;
+        this.tail = newNode;
         return true;
     }
 
-    public boolean remove(Object o) {
-        Node preNode = head;
-        Node curNode = head.next;
-        while (curNode != null) {
-            if (curNode.contains(o)) {
-                if (nextUpd.compareAndSet(preNode, curNode, curNode.next)) {//removed from chain
-                    if (curNode == tail)tail = preNode;
-
-                    return true;
-                } else {
-                    return false;
+    public E poll() {
+        while (true) {
+            ChainNode fistNode = head.next;
+            if (fistNode == null) return null;
+            ChainNode secondNode = fistNode.next;
+            if (nextUpd.compareAndSet(head, fistNode, secondNode)) {
+                if (fistNode == tail) {
+                    tail = head;
+                    tail.next = null;
                 }
+                return (E) fistNode.v;
+            }
+        }
+    }
+
+    public boolean remove(Object o) {
+        ChainNode preNode = head;
+        ChainNode curNode = head.next;
+        while (true) {
+            if (curNode == null) return false;
+            ChainNode nextNode = curNode.next;
+            if (curNode.contains(o)) {//found
+                return (nextUpd.compareAndSet(preNode, curNode, nextNode));//removed
             }
 
-            preNode = curNode;
-            curNode = preNode.next;
+            curNode=nextNode;
+            preNode=curNode;
         }
-        return false;
     }
 
     public boolean contains(Object o) {
-        Node node = head.next;
+        ChainNode node = head.next;
         while (node != null) {
             if (node.contains(o)) return true;
-            Node next = node.next;
+            ChainNode next = node.next;
         }
         return false;
     }
 
     public Object[] toArray() {
         LinkedList<E> al = new LinkedList<E>();
-        Node node = head.next;
+        ChainNode node = head.next;
         while (node != null) {
             al.add((E) node.v);
-            Node next = node.next;
+            ChainNode next = node.next;
         }
         return al.toArray();
     }
 
     public <T> T[] toArray(T[] a) {
         LinkedList<E> al = new LinkedList<E>();
-        Node node = head.next;
+        ChainNode node = head.next;
         while (node != null) {
             al.add((E) node.v);
-            Node next = node.next;
+            ChainNode next = node.next;
         }
         return al.toArray(a);
     }
@@ -136,28 +139,44 @@ public class BeeConcurrentQueue<E> extends ConcurrentLinkedQueue<E> {
     }
 
     private class Itr implements Iterator<E> {
-        private Node preNode = head;
-        private Node curNode = head;
+        private ChainNode preNode = head;
+        private ChainNode curNode = null;
+        private ChainNode nextNode = null;
 
         public boolean hasNext() {
             return curNode != null && curNode.next != null;
         }
 
         public E next() {
-            if (curNode == null) throw new NoSuchElementException();
+            if (curNode == null || curNode.next == null) throw new IllegalStateException();
 
-            preNode = curNode;
-            curNode = preNode.next;
-            return (curNode != null) ? (E) curNode.v : null;
+            preNode=curNode;
+            curNode=curNode.next;
+            return (E) curNode.v;
         }
 
         public void remove() {
-            if (curNode == null || preNode == curNode) throw new IllegalStateException();
-            Node nextNode = curNode.next;
-            if (preNode.next == curNode && nextUpd.compareAndSet(preNode, curNode, nextNode)) {//removed from chain
-                curNode = nextNode;
-                if (curNode == tail)tail = preNode;
-            }
+            while (true) {
+                      //@todo
+//                if (preNode == null) {//remove by other
+//                    curNode = head;
+//                    return;
+//                } else if (preNode.next == curNode) {
+//                    Node nextNode = curNode.next;
+//                    if (curNode.next == nextNode && nextUpd.compareAndSet(preNode, curNode, nextNode)) {//removed from chain
+//                        curNode.pre = null;
+//                        curNode.next = null;
+//
+//                        if (curNode == tail) {
+//                            preNode.next = null;
+//                            tail = preNode;
+//                        } else {
+//                            nextNode.pre = preNode;
+//                        }
+//                        return;
+//                    }
+//                }
+          }
         }
     }//Iterator
 }
